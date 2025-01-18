@@ -1,0 +1,32 @@
+body {
+  font-family: Arial, sans-serif;
+}
+
+.oscillator-container {
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.amplitude-slider {
+  width: 100%;
+  margin: 5px 0;
+}
+
+.amplitude-display {
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.oscillator-5-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin: 10px 0;
+}
+
+#oscillator5Timer {
+  font-size: 16px;
+  font-weight: bold;
+}
