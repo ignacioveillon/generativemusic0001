@@ -36,18 +36,41 @@ function setup() {
   });
 
   stopSawtoothButton.addEventListener('click', stopSawtoothOscillator);
+
   triggerAllEnvelopesButton.addEventListener('click', () => {
     initializeAudioContext();
     triggerAllEnvelopes();
   });
+
   triggerDecreaseEnvelopesButton.addEventListener('click', () => {
     initializeAudioContext();
     triggerDecreaseEnvelopes();
   });
 
-  // Start the oscillators on user interaction
-  const oscillatorsContainer = document.getElementById('oscillatorsContainer');
-  oscillatorsContainer.addEventListener('click', initializeAudioContext);
+  // Ensure initializeAudioContext is called once when clicking on the body
+  let isAudioContextInitialized = false; // Ensure it is called only once
+  document.body.addEventListener('click', (event) => {
+    if (isAudioContextInitialized) return;  // If already initialized, do nothing
+
+    // Make sure the click is not on any of the buttons
+    const excludedElements = [
+      sawtoothButton,
+      stopSawtoothButton,
+      triggerAllEnvelopesButton,
+      triggerDecreaseEnvelopesButton,
+    ];
+
+    // Check if the click is on any of the excluded buttons or their children
+    const isClickOnExcludedElement = excludedElements.some((button) =>
+      button.contains(event.target)
+    );
+
+    // If not on excluded elements, initialize AudioContext
+    if (!isClickOnExcludedElement) {
+      initializeAudioContext();
+      isAudioContextInitialized = true;  // Mark as initialized, so it doesn't trigger again
+    }
+  });
 }
 
 function startOscillators() {
