@@ -47,6 +47,12 @@ function setup() {
     triggerDecreaseEnvelopes();
   });
 
+  triggerBothEnvelopesButton.addEventListener('click', () => {
+    initializeAudioContext();
+    startBothEnvelopes();
+  });
+
+    
   // Ensure initializeAudioContext is called once when clicking on the body
   let isAudioContextInitialized = false; // Ensure it is called only once
   document.body.addEventListener('click', (event) => {
@@ -71,7 +77,11 @@ function setup() {
       isAudioContextInitialized = true;  // Mark as initialized, so it doesn't trigger again
     }
   });
+
+  initializeAudioContext();
+  
 }
+
 
 function startOscillators() {
   oscillators = [];
@@ -128,12 +138,47 @@ function startOscillators() {
 
     updateAmplitudeDisplay(gainNode, amplitudeDisplay, slider, i);
 
+    // Add specific controls for Oscillator 4
+    if (i === 3) {
+      addOscillator4Controls(oscillatorsContainer, gainNode, amplitudeDisplay, slider);
+    }
+
     // Add specific controls for Oscillator 5
     if (i === 4) {
       addOscillator5Controls(oscillatorsContainer, gainNode, amplitudeDisplay, slider);
     }
   }
 }
+
+
+function addOscillator4Controls(parentContainer, gainNode, amplitudeDisplay, slider) {
+  const controlsContainer = document.createElement('div');
+  controlsContainer.className = 'oscillator-4-controls';
+
+  // Timer for sound duration
+  const timerDisplay = document.createElement('div');
+  timerDisplay.id = 'oscillator4Timer';
+  timerDisplay.textContent = 'Beats of sound: 0';
+  controlsContainer.appendChild(timerDisplay);
+
+  // Timer for silence duration
+  const silenceTimerDisplay = document.createElement('div');
+  silenceTimerDisplay.id = 'oscillator4SilenceTimer';
+  silenceTimerDisplay.textContent = 'Beats of silence: 0';
+  controlsContainer.appendChild(silenceTimerDisplay);
+
+  // Envelope button
+  const envelopeButton = document.createElement('button');
+  envelopeButton.textContent = 'Start Oscillator 4 Envelope';
+  envelopeButton.addEventListener('click', () =>
+    startOscillator4Envelope(gainNode, timerDisplay, silenceTimerDisplay, amplitudeDisplay, slider)
+  );
+  controlsContainer.appendChild(envelopeButton);
+
+  parentContainer.appendChild(controlsContainer);
+}
+
+
 
 function addOscillator5Controls(parentContainer, gainNode, amplitudeDisplay, slider) {
   const controlsContainer = document.createElement('div');
@@ -142,13 +187,13 @@ function addOscillator5Controls(parentContainer, gainNode, amplitudeDisplay, sli
   // Timer for sound duration
   const timerDisplay = document.createElement('div');
   timerDisplay.id = 'oscillator5Timer';
-  timerDisplay.textContent = 'Sound in seconds: 0';
+  timerDisplay.textContent = 'Beats of sound: 0';
   controlsContainer.appendChild(timerDisplay);
 
   // Timer for silence duration
   const silenceTimerDisplay = document.createElement('div');
   silenceTimerDisplay.id = 'oscillator5SilenceTimer';
-  silenceTimerDisplay.textContent = 'Silence in seconds: 0';
+  silenceTimerDisplay.textContent = 'Beats of silence: 0';
   controlsContainer.appendChild(silenceTimerDisplay);
 
   // Envelope button
@@ -162,6 +207,8 @@ function addOscillator5Controls(parentContainer, gainNode, amplitudeDisplay, sli
   parentContainer.appendChild(controlsContainer);
 }
 
+
+
 function updateAmplitudeDisplay(gainNode, amplitudeDisplay, slider, i) {
   function update() {
     const currentGainValue = gainNode.gain.value;
@@ -171,6 +218,93 @@ function updateAmplitudeDisplay(gainNode, amplitudeDisplay, slider, i) {
   }
   update();
 }
+
+
+function startBothEnvelopes() {
+  const gainNode4 = gainNodes[3];
+  const gainNode5 = gainNodes[4];
+
+  const timerDisplay4 = document.getElementById('oscillator4Timer');
+  const silenceTimerDisplay4 = document.getElementById('oscillator4SilenceTimer');
+  const amplitudeDisplay4 = document.getElementById('amplitudeDisplay4');
+  const slider4 = document.querySelector('#oscillatorsContainer input:nth-child(8)');
+
+  const timerDisplay5 = document.getElementById('oscillator5Timer');
+  const silenceTimerDisplay5 = document.getElementById('oscillator5SilenceTimer');
+  const amplitudeDisplay5 = document.getElementById('amplitudeDisplay5');
+  const slider5 = document.querySelector('#oscillatorsContainer input:nth-child(9)');
+
+  if (gainNode4 && gainNode5) {
+    startOscillator4Envelope(gainNode4, timerDisplay4, silenceTimerDisplay4, amplitudeDisplay4, slider4);
+    startOscillator5Envelope(gainNode5, timerDisplay5, silenceTimerDisplay5, amplitudeDisplay5, slider5);
+  } else {
+    console.error("Oscillators 4 or 5 are not properly initialized.");
+  }
+}
+
+
+
+function startOscillator4Envelope(gainNode, timerDisplay, silenceTimerDisplay, amplitudeDisplay, slider) {
+  const targetAmplitude = 0.25 / 4; // Adjusted for Oscillator 4
+
+  let silenceElapsed = 0; // Silence timer starts from 0
+  let silenceInterval;
+
+  const triggerEnvelope = () => {
+    const currentTime = audioContext.currentTime;
+
+    // Reset and stop the silence timer
+    clearInterval(silenceInterval);
+    silenceElapsed = 0;
+    silenceTimerDisplay.textContent = 'Beats of silence: 0';
+
+    gainNode.gain.cancelScheduledValues(currentTime);
+    gainNode.gain.setValueAtTime(0, currentTime);
+    gainNode.gain.linearRampToValueAtTime(targetAmplitude, currentTime + 4);
+    gainNode.gain.linearRampToValueAtTime(0, currentTime + 8);
+
+    // Update Sound Timer
+    let elapsed = 1; // Start with "Beats of sound: 1"
+    timerDisplay.textContent = `Beats of sound: ${elapsed}`;
+    const timerInterval = setInterval(() => {
+      elapsed++;
+      if (elapsed <= 8) {
+        timerDisplay.textContent = `Beats of sound: ${elapsed}`;
+      } else {
+        clearInterval(timerInterval);
+        timerDisplay.textContent = 'Beats of sound: 0';
+
+        // Start the Silence Timer after sound ends
+        silenceElapsed = 1; // Start silence timer from 1
+        silenceTimerDisplay.textContent = `Beats of silence: ${silenceElapsed}`;
+        silenceInterval = setInterval(() => {
+          silenceElapsed++;
+          silenceTimerDisplay.textContent = `Beats of silence: ${silenceElapsed}`;
+        }, 1000);
+      }
+    }, 1000);
+
+    // Sync Slider and Display
+    const updateInterval = setInterval(() => {
+      const currentGainValue = gainNode.gain.value;
+      amplitudeDisplay.textContent = `Oscillator 4 Amplitude = ${currentGainValue.toFixed(3)}`;
+      slider.value = currentGainValue.toFixed(3);
+    }, 100);
+
+    setTimeout(() => {
+      clearInterval(updateInterval);
+      scheduleNextTrigger();
+    }, 8000);
+  };
+
+  const scheduleNextTrigger = () => {
+    setTimeout(triggerEnvelope, (Math.floor(Math.random() * 8) + 1) * 1000);
+  };
+
+  triggerEnvelope();
+}
+
+
 
 function startOscillator5Envelope(gainNode, timerDisplay, silenceTimerDisplay, amplitudeDisplay, slider) {
   const targetAmplitude = 0.25 / 5;
@@ -184,7 +318,7 @@ function startOscillator5Envelope(gainNode, timerDisplay, silenceTimerDisplay, a
     // Reset and stop the silence timer
     clearInterval(silenceInterval);
     silenceElapsed = 0;
-    silenceTimerDisplay.textContent = 'Silence in seconds: 0';
+    silenceTimerDisplay.textContent = 'Beats of silence: 0';
 
     gainNode.gain.cancelScheduledValues(currentTime);
     gainNode.gain.setValueAtTime(0, currentTime);
@@ -192,22 +326,27 @@ function startOscillator5Envelope(gainNode, timerDisplay, silenceTimerDisplay, a
     gainNode.gain.linearRampToValueAtTime(0, currentTime + 8);
 
     // Update Sound Timer
-    let elapsed = 1; // Start with "Sound in seconds: 1"
-    timerDisplay.textContent = `Sound in seconds: ${elapsed}`;
+    let elapsed = 1; // Start with "Beats of sound: 1"
+    timerDisplay.textContent = `Beats of sound: ${elapsed}`;
+    console.log(`Timer Display Initialized: ${timerDisplay.textContent}`); // Debug message
+
     const timerInterval = setInterval(() => {
       elapsed++;
       if (elapsed <= 8) {
-        timerDisplay.textContent = `Sound in seconds: ${elapsed}`;
+        timerDisplay.textContent = `Beats of sound: ${elapsed}`;
+        console.log(`Updating Timer Display: ${timerDisplay.textContent}`); // Debug message
       } else {
         clearInterval(timerInterval);
-        timerDisplay.textContent = 'Sound in seconds: 0';
+        timerDisplay.textContent = 'Beats of sound: 0';
+        console.log(`Sound Timer Complete: ${timerDisplay.textContent}`); // Debug message
 
         // Start the Silence Timer after sound ends
         silenceElapsed = 1; // Start silence timer from 1
-        silenceTimerDisplay.textContent = `Silence in seconds: ${silenceElapsed}`;
+        silenceTimerDisplay.textContent = `Beats of silence: ${silenceElapsed}`;
         silenceInterval = setInterval(() => {
           silenceElapsed++;
-          silenceTimerDisplay.textContent = `Silence in seconds: ${silenceElapsed}`;
+          silenceTimerDisplay.textContent = `Beats of silence: ${silenceElapsed}`;
+          console.log(`Silence Timer Updating: ${silenceTimerDisplay.textContent}`); // Debug message
         }, 1000);
       }
     }, 1000);
@@ -226,11 +365,13 @@ function startOscillator5Envelope(gainNode, timerDisplay, silenceTimerDisplay, a
   };
 
   const scheduleNextTrigger = () => {
-    setTimeout(triggerEnvelope, Math.random() * 8000);
+    setTimeout(triggerEnvelope, (Math.floor(Math.random() * 8) + 1) * 1000);
   };
 
   triggerEnvelope();
 }
+
+
 
 function startSawtoothOscillator() {
   if (sawtoothOscillator) {
