@@ -208,15 +208,30 @@ function addOscillator5Controls(parentContainer, gainNode, amplitudeDisplay, sli
 }
 
 
-
 function updateAmplitudeDisplay(gainNode, amplitudeDisplay, slider, i) {
-  function update() {
-    const currentGainValue = gainNode.gain.value;
-    amplitudeDisplay.textContent = `Oscillator ${i + 1} Amplitude = ${currentGainValue.toFixed(3)}`;
-    slider.value = currentGainValue.toFixed(3);
-    requestAnimationFrame(update);
-  }
-  update();
+    // Force initial value to 0 for both slider and gain node immediately
+    gainNode.gain.value = 0; // Set gain to 0 directly
+
+    // Force a repaint before setting the slider
+    slider.offsetHeight; // This forces a reflow/repaint
+
+    slider.value = 0;
+
+    function update() {
+        const currentGainValue = gainNode.gain.value;
+
+        amplitudeDisplay.textContent = `Oscillator ${i + 1} Amplitude = ${currentGainValue.toFixed(3)}`;
+
+        // Only update slider if it's not being changed by user input
+        if (document.activeElement !== slider) {
+            slider.value = currentGainValue.toFixed(3);
+        }
+
+        requestAnimationFrame(update); // Keep updating every frame
+    }
+
+    // Start the update loop
+    update();
 }
 
 
